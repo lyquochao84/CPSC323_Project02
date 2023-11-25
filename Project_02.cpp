@@ -6,136 +6,356 @@
     Output: Displayed along the stack implementation. 
     Language: C++
 */
+
 #include <iostream>
-#include <fstream>
+#include <iomanip>
+#include <cstdlib>
 #include <stack>
+#include <string>
 #include <vector>
 
 using namespace std;
 
-struct Action {
-    char type; // 'S' for shift, 'R' for reduce, 'A' for accept
-    int state_or_production;
+struct Entry
+{
+    string input;
+    string action;
 };
 
-struct Entry {
-    char input;
-    Action action;
-};
+class Parser
+{
+    private:
+        vector<vector<Entry>> parsingTable;
 
-class Parser {
-private:
-    vector<vector<Entry>> parsingTable;
+    public:
+        Parser() 
+        {
+            // Initialize the parsing table as per the given table
+            parsingTable = {
+                {{"id", "5"}, {"(", "4"}, {"E", "1"}, {"T", "2"}, {"F", "3"}},
+                {{"+", "6"}, {"$", "acc"}},
+                {{"+", "R2"}, {"*", "7"}, {")", "R2"}, {"$", "R2"}},
+                {{"+", "R4"}, {"*", "R4"}, {")", "R4"}, {"$", "R4"}},
+                {{"id", "5"}, {"(", "4"}, {"E", "8"}, {"T", "2"}, {"F", "3"}},
+                {{"+", "R6"}, {"*", "R6"}, {")", "R6"}, {"$", "R6"}},
+                {{"id", "5"}, {"(", "4"}, {"T", "9"}, {"F", "3"}},
+                {{"id", "5"}, {"(", "4"}, {"F", "10"}},
+                {{"+", "6"}, {")", "11"}},
+                {{"+", "R1"}, {"*", "7"}, {")", "R1"}, {"$", "R1"}},
+                {{"+", "R3"}, {"*", "R3"}, {")", "R3"}, {"$", "R3"}},
+                {{"+", "R5"}, {"*", "R5"}, {")", "R5"}, {"$", "R5"}}
+            };
+        }
 
-public:
-    Parser() {
-        // Initialize the parsing table as per the given table
-        parsingTable = {
-            {{'i', {'S', 5}}, {'(', {'S', 4}}, {'E', {'S', 1}}, {'T', {'S', 2}}, {'F', {'S', 3}}},
-            {{'+', {'S', 6}}, {'$', {'A', 0}}},
-            {{'+', {'R', 2}}, {'*', {'S', 7}}, {')', {'R', 2}}, {'$', {'R', 2}}},
-            {{'+', {'R', 4}}, {'*', {'R', 4}}, {')', {'R', 4}}, {'$', {'R', 4}}},
-            {{'i', {'S', 5}}, {'(', {'S', 4}}, {'E', {'G', 8}}, {'T', {'S', 2}}, {'F', {'S', 3}}},
-            {{'+', {'R', 6}}, {'*', {'R', 6}}, {')', {'R', 6}}, {'$', {'R', 6}}},
-            {{'i', {'S', 5}}, {'(', {'S', 4}}, {'T', {'G', 9}}, {'F', {'S', 3}}},
-            {{'i', {'S', 5}}, {'(', {'S', 4}}, {'F', {'G', 10}}},
-            {{'+', {'S', 6}}, {')', {'S', 11}}},
-            {{'+', {'R', 1}}, {'*', {'S', 7}}, {')', {'R', 1}}, {'$', {'R', 1}}},
-            {{'+', {'R', 3}}, {'*', {'R', 3}}, {')', {'R', 3}}, {'$', {'R', 3}}},
-            {{'+', {'R', 5}}, {'*', {'R', 5}}, {')', {'R', 5}}, {'$', {'R', 5}}}
-        };
-    }
+        string stackToString(const stack<string> &s)
+        {
+            stack<string> tempStack(s);
+            string result;
 
-    void parseInput(const string& input) {
-        stack<int> stateStack;
-        stack<char> symbolStack;
-        ofstream outputFile("output.txt");
+            while (!tempStack.empty())
+            {
+                result.insert(0, tempStack.top());
+                tempStack.pop();
+            }
 
-        stateStack.push(0);
-        symbolStack.push('$');
+            return result;
+        }
 
-        int step = 1;
+        void parseInput(string inputString)
+        {
+            stack<string> stack;
 
-        outputFile << "Input: " << input << "\n\n";
-        outputFile << "Stack Output:\n";
-        outputFile << "Step\tStack\tInput\tAction\n";
+            string input = inputString;
+            string action;
+            int stepCount = 0;
+            string currentInput;
+            string next;
 
-        for (size_t i = 0; i < input.size(); ++i) {
-            char currentSymbol = input[i];
-            int currentState = stateStack.top();
-            char topSymbol = symbolStack.top();
+            stack.push("$");
+            stack.push("0");
+            string stackString = stackToString(stack);
+            int top = stoi(stack.top());
 
-            Entry entry;
-            bool foundEntry = false;
+            cout << endl; 
+            cout << setw(6) << "Step" << setw(30) << "Stack" << setw(30) << "Input" << setw(30) << "Action" << endl;
 
-            for (const Entry& e : parsingTable[currentState]) {
-                if (e.input == currentSymbol) {
-                    entry = e;
-                    foundEntry = true;
+            while (!stack.empty())
+            {
+                Entry entry;
+                bool foundEntry = false;
+                top = stoi(stack.top());
+
+                // Check to see if the current value of the inputString is "id"
+                if (input[0] == 'i')
+                {
+                    currentInput = input.substr(0, 2);
+                    input.erase(0, 2);
+                }
+                
+                else
+                {
+                    currentInput = input[0];
+                    input.erase(0, 1);
+                }
+
+                for (const Entry &e : parsingTable[top])
+                {
+                    if (e.input == currentInput)
+                    {
+                        entry = e;
+                        foundEntry = true;
+                    }
+                }
+
+                // If the current value of the inputString does not take us to an empty cell in the Parsing table
+                if (foundEntry == true)
+                {
+                    // If the current value of the inputString takes us to Accept
+                    if (entry.action == "acc")
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            stack.pop();
+                        }
+
+                        action = "Accepted";
+                        cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                        cout << "\n\n" << inputString << " is valid" << endl;
+                    }
+
+                    // If the current value of the inputString takes us to a Reduce Rule
+                    else if (entry.action[0] == 'R')
+                    {
+                        input.insert(0, currentInput);
+
+                        // If the current value of the inputString takes us to R1 (E->E+T)
+                        if (entry.action[1] == '1')
+                        {
+                            // Remove the "E+T" from stackString
+                            for (int i = 0; i < 6; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "E" into the stack
+                            currentInput = "E";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+
+                        // If the current value of the inputString takes us to R2 (E->T)
+                        else if (entry.action[1] == '2')
+                        {
+                            // Remove the "T" from stackString
+                            for (int i = 0; i < 2; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "E" into the stack
+                            currentInput = "E";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+
+                        // If the current value of the inputString takes us to R3 (T->T*F)
+                        else if (entry.action[1] == '3')
+                        {
+                            // Remove the "T*F" from stackString
+                            for (int i = 0; i < 6; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "T" into the stack
+                            currentInput = "T";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+
+                        // If the current value of the inputString takes us to R4 (T->F)
+                        else if (entry.action[1] == '4')
+                        {
+                            // Remove the "F" from stackString
+                            for (int i = 0; i < 2; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "T" into the stack
+                            currentInput = "T";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+
+                        // If the current value of the inputString takes us to R5 (F->(E))
+                        else if (entry.action[1] == '5')
+                        {
+                            // Remove the "(E)" from stackString
+                            for (int i = 0; i < 6; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "F" into the stack
+                            currentInput = "F";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+
+                        // If the current value of the inputString takes us to R6 (F->id)
+                        else
+                        {
+                            // Remove the "id" from stackString
+                            for (int i = 0; i < 2; i++)
+                            {
+                                stack.pop();
+                            }
+
+                            top = stoi(stack.top());
+                            next = entry.action;
+                            action = "Reduce " + currentInput + " --> " + next;
+
+                            cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                            // Push "F" into the stack
+                            currentInput = "F";
+
+                            for (const Entry &e : parsingTable[top])
+                            {
+                                if (e.input == currentInput)
+                                {
+                                    entry = e;
+                                }
+                            }
+                            next = entry.action;
+                            stack.push(currentInput);
+                            stack.push(next);
+                            stackString = stackToString(stack);
+                            stepCount++;
+                        }
+                    }
+
+                    // If the current value of the inputString takes us to Shift
+                    else
+                    {
+                        next = entry.action;
+                        stack.push(currentInput);
+                        stack.push(next);
+                        action = "Shift " + currentInput + " --> GoTo S" + next;
+
+                        cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+                        stackString = stackToString(stack);
+                        stepCount++;
+                    }
+                }
+
+                // If the current value of the inputString takes us to an empty cell in the Parsing table
+                else
+                {
+                    action = "invalid --> Not Accepted";
+                    cout << setw(6) << stepCount << setw(30) << stackString << setw(30) << input << setw(30) << action << endl;
+
+                    cout << "\n\n" << inputString << " is invalid" << endl;
                     break;
                 }
             }
-
-            if (!foundEntry) {
-                outputFile << step << "\tError\n";
-                break;
-            }
-
-            stack<int> tempStack = stateStack;
-            while (!tempStack.empty()) {
-                outputFile << tempStack.top() << " ";
-                tempStack.pop();
-            }
-            outputFile << "\t" << input.substr(i) << "\t";
-
-            if (entry.action.type == 'S') {
-                stateStack.push(entry.action.state_or_production);
-                symbolStack.push(currentSymbol);
-                outputFile << "Shift " << entry.action.state_or_production;
-                ++i; // Move to the next input symbol
-            } else if (entry.action.type == 'R') {
-                int production = entry.action.state_or_production;
-                int popCount = 2 * production - 1;
-
-                for (int j = 0; j < popCount; ++j) {
-                    stateStack.pop();
-                    symbolStack.pop();
-                }
-
-                char nonTerminal = 'E' + production - 1;
-                currentState = stateStack.top();
-                int nextState = parsingTable[currentState][nonTerminal - 'E'].action.state_or_production;
-
-                stateStack.push(nextState);
-                symbolStack.push(nonTerminal);
-
-                outputFile << "Reduce " << production;
-            } else if (entry.action.type == 'A') {
-                outputFile << "Accept";
-                break;
-            } else if (entry.action.type == 'G') {
-                stateStack.push(entry.action.state_or_production);
-                symbolStack.push(currentSymbol);
-                outputFile << "GoTo " << entry.action.state_or_production;
-            }
-
-            outputFile << "\n";
-            ++step;
         }
-
-        outputFile << "\nOutput: ";
-        if (stateStack.top() == 0 && symbolStack.top() == 'E') {
-            outputFile << "String is accepted.\n";
-        } else {
-            outputFile << "String is not accepted.\n";
-        }
-
-        outputFile.close();
-    }
 };
 
-int main() {
+int main()
+{
     Parser parser;
-    parser.parseInput("(id+id)*id$");
+    string inputString;
+    cout << "Enter the input string: ";
+    cin >> inputString;
+
+    parser.parseInput(inputString);
     return 0;
 }
